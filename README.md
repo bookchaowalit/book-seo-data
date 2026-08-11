@@ -1,0 +1,106 @@
+# book-seo-data
+
+SEO ranking intelligence — **lake-first**, public-page collection only by default.
+
+Migration status: shared `data_lake.product_adapter`. Each keyword/query response
+is landed separately (provider + query). HTML exact bytes go to landing; Bronze
+holds structured ranks + `raw_object_key`.
+
+## Data contract
+
+| Field | Value |
+|---|---|
+| `source` | `book-seo-data` |
+| `domain` | `seo` |
+| `datasets` | `seo_rankings`, `seo_rankings_history` |
+| Bronze schema | `1` |
+| envelope | `seo.v1` |
+| port | `8106` |
+
+```text
+Public search/page response bytes
+    → landing/source=book-seo-data/provider=<name>/…
+    → bronze/domain=seo/dataset=seo_rankings|seo_rankings_history
+    → manifest + lineage
+    → DuckDB API
+    → optional CSV projection
+```
+
+### Stable record identity
+
+`keyword : target_domain : location : device`
+
+Fields on Bronze/API items:
+
+- `rank`, `result_url`, `result_title`, `observed_at`
+- `event_time` = observation time (`observed_at`)
+
+### Provider policy
+
+| Provider | Default | Notes |
+|---|---|---|
+| `public_page_check` | free | Direct public-page checks |
+| `offline_fixtures` | free | Fixture / dry-run |
+| `firecrawl` | **blocked** | Before network |
+| `google_cse` | **blocked** | Billing path |
+| `paid_serp` | **blocked** | Paid SERP APIs |
+
+## Quick start
+
+```bash
+pip install -e .
+pip install -r <solo-empire>/infra/requirements-data-lake.txt
+
+python -m book_seo.ingest --fixture
+python -m book_seo.ingest --keywords "python developer" --domain bookchaowalit.com \
+  --data-lake-uri /path/to/data/lake
+
+python -m book_seo.api --host 127.0.0.1 --port 8106
+```
+
+Lake failure exits non-zero and does **not** update `seo_rankings.csv`.
+
+## Optional Iceberg REST catalog read pilot
+
+SEO uses the shared `product_store` feature flag. Direct Bronze Parquet remains
+the default:
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `LAKE_READ_MODE` | `parquet` | Direct Bronze read; `iceberg` resolves the registered catalog table and queries it with DuckDB |
+| `LAKE_READ_FALLBACK` | `error` | Fail-closed by default; `parquet` is an explicit fallback |
+| `ICEBERG_CATALOG_URI` | unset | REST/SQL catalog URI from the runtime secret provider |
+| `ICEBERG_WAREHOUSE_URI` | unset | Provider-issued warehouse URI/name |
+| `ICEBERG_CATALOG_TOKEN` | unset | Catalog credential; never store it in the repository or API response |
+
+The matching tables must be registered before enabling Iceberg mode:
+`bronze.seo_seo_rankings` and `bronze.seo_seo_rankings_history`.
+
+```bash
+npx --yes @infisical/cli@0.43.120 run \
+  --projectId=<solo-empire-project-id> --env=dev --path=/cloudflare -- \
+  bash -lc 'export SOLO_EMPIRE_DATA_LAKE_URI=s3://<bucket>/<prefix>; \
+    export LAKE_READ_MODE=iceberg; export LAKE_READ_FALLBACK=error; \
+    PYTHONPATH=src /path/to/solo-empire/.venv/bin/python \
+    -m book_seo.api --host 127.0.0.1 --port 8106'
+```
+
+Successful `/v1/metadata` reports
+`storage_model=lake_first_iceberg_rest_duckdb` and both source kinds as
+`iceberg_rest_duckdb`. CSV remains CLI-only and is not a fallback unless the
+explicit `LAKE_READ_FALLBACK=parquet` flag is selected.
+
+## API
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/v1/metadata` | `storage_model=lake_first_bronze_duckdb` (Parquet) or `lake_first_iceberg_rest_duckdb` (Iceberg flag) |
+| GET | `/v1/records` | Bronze latest (not CSV) |
+| GET | `/v1/history` | Bronze history |
+| POST | `/v1/refresh` | 403 by default |
+
+## Tests
+
+```bash
+PYTHONPATH=src /path/to/solo-empire/.venv/bin/python -m unittest discover -s tests -v
+```
