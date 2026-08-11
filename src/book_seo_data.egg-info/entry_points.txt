@@ -1,3 +1,0 @@
-[console_scripts]
-book-seo-data = book_seo.ingest:main
-book-seo-data-api = book_seo.api:main
