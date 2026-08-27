@@ -6,6 +6,8 @@ Migration status: shared `data_lake.product_adapter`. Each keyword/query respons
 is landed separately (provider + query). HTML exact bytes go to landing; Bronze
 holds structured ranks + `raw_object_key`.
 
+Collection cron: `bash setup_cron.sh install` runs owned-domain homepage checks daily at 08:00 into `data/exported/`. This does not collect SERP ranks. Lake ingest remains a separate command.
+
 ## Data contract
 
 | Field | Value |
