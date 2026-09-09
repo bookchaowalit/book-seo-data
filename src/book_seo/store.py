@@ -95,6 +95,11 @@ def seo_item_from_bronze(
         "source_record_id": str(row.get("source_record_id", "")),
         "raw_object_key": str(row.get("raw_object_key", "")),
         "content_type": str(row.get("content_type") or payload.get("content_type_hint") or ""),
+        "capture_kind": str(payload.get("capture_kind") or "serp_ranking"),
+        "page_http_status": str(payload.get("page_http_status") or ""),
+        "page_canonical_url": str(payload.get("page_canonical_url") or ""),
+        "page_content_length": str(payload.get("page_content_length") or ""),
+        "page_data_status": str(payload.get("page_data_status") or ""),
     }
     if history:
         item["record_id"] = make_record_id(item) + f"#h{history_idx}"
