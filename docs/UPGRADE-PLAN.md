@@ -17,6 +17,10 @@ Score: 8/10 -> 8.5/10 — rankings now match target hosts exactly (no lookalike/
 
 ## Done in this pass (pass 4: edge cases)
 
+- `config.env_bool` returned False for anything but a true-ish word, so
+  `FREE_ONLY=` (blank line in .env/compose) or a typo silently disabled the
+  free-only guard; blank/unrecognised values now keep the safe default
+  (`EnvBoolTests` in `tests/test_edge_cases.py`).
 - `quality.finite_number` raised `OverflowError` for a JSON integer beyond
   float range (`1` followed by 400 zeros); it now returns `None`.
 - `scripts/scrape_seo_rankings._clean_text` ran `html.unescape` on text that
