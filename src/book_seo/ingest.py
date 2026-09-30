@@ -25,7 +25,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlsplit
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 OUTPUT_DIR = PROJECT_ROOT / "data"
@@ -64,6 +64,7 @@ try:
     from .policy import evaluate_provider, require_provider, external_writes_allowed
     from .store import seed_fixtures
     from . import lake as _lake
+    from .fsutil import atomic_append_csv, atomic_write_csv
 except ImportError:  # pragma: no cover
     _dp_config = None
     _lake = None
@@ -222,6 +223,29 @@ def google_search(query: str, limit: int = 20) -> list:
     return results2
 
 
+def normalize_domain(value: str) -> str:
+    """``https://www.Example.com/path`` -> ``example.com`` (host only, lowercase)."""
+    text = str(value or "").strip().lower()
+    if "://" not in text:
+        text = "//" + text
+    try:
+        host = (urlsplit(text).hostname or "").strip(".")
+    except ValueError:  # e.g. an unbalanced "[" IPv6 literal
+        return ""
+    return host[4:] if host.startswith("www.") else host
+
+
+def domain_matches(url: str, domain: str) -> bool:
+    """True when ``url``'s host is ``domain`` or one of its subdomains.
+
+    A plain substring test matched ``notexample.com`` and
+    ``example.com.evil.net`` for ``example.com``.
+    """
+    target = normalize_domain(domain)
+    host = normalize_domain(url)
+    return bool(target) and (host == target or host.endswith("." + target))
+
+
 def check_ranking(
     keyword: str,
     target_domains: list,
@@ -248,7 +272,7 @@ def check_ranking(
         url = result.get("url", "")
         title = result.get("title", "")
         for domain in target_domains:
-            if domain.lower() in url.lower():
+            if domain_matches(url, domain):
                 rankings["found"] = True
                 rankings["all_positions"].append(
                     {
@@ -308,11 +332,9 @@ def project_rankings_csv(rows: list[dict], output_dir: Path) -> Path:
         "total_results",
     ]
     scraped = _projection_timestamp()
-    with open(path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
-        writer.writeheader()
-        for r in rows:
-            writer.writerow({**r, "scraped_at": scraped})
+    atomic_write_csv(
+        path, fieldnames, [{k: r.get(k, "") for k in fieldnames} | {"scraped_at": scraped} for r in rows]
+    )
     print(f"  Projected {len(rows)} rankings → {path}")
     return path
 
@@ -332,25 +354,21 @@ def project_history_csv(rows: list[dict], output_dir: Path) -> Path:
         "observed_at",
     ]
     scraped = _projection_timestamp()
-    file_exists = path.exists()
-    with open(path, "a", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
-        if not file_exists:
-            writer.writeheader()
-        for r in rows:
-            writer.writerow(
-                {
-                    "date": scraped,
-                    "keyword": r.get("keyword"),
-                    "target_domain": r.get("target_domain"),
-                    "best_rank": r.get("rank") or r.get("best_rank") or "",
-                    "rank": r.get("rank") or "",
-                    "best_domain": r.get("target_domain") or r.get("best_domain") or "",
-                    "found": r.get("found"),
-                    "provider": r.get("provider"),
-                    "observed_at": r.get("observed_at") or scraped,
-                }
-            )
+    history_rows = [
+        {
+            "date": scraped,
+            "keyword": r.get("keyword"),
+            "target_domain": r.get("target_domain"),
+            "best_rank": r.get("rank") or r.get("best_rank") or "",
+            "rank": r.get("rank") or "",
+            "best_domain": r.get("target_domain") or r.get("best_domain") or "",
+            "found": r.get("found"),
+            "provider": r.get("provider"),
+            "observed_at": r.get("observed_at") or scraped,
+        }
+        for r in rows
+    ]
+    atomic_append_csv(path, fieldnames, history_rows)
     print(f"  Projected +{len(rows)} history rows → {path}")
     return path
 
@@ -613,6 +631,18 @@ def run_live_ingest(
     }
 
 
+def _dedupe_casefold(values) -> list[str]:
+    """Drop blanks and case-insensitive repeats, keeping the first spelling."""
+    seen: set[str] = set()
+    result: list[str] = []
+    for value in values:
+        key = value.casefold()
+        if value and key not in seen:
+            seen.add(key)
+            result.append(value)
+    return result
+
+
 def main(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(
         description="Check SEO rankings (lake-first; public-page default)"
@@ -632,15 +662,23 @@ def main(argv: Optional[list[str]] = None) -> int:
     args = parser.parse_args(argv)
 
     keywords = (
-        [k.strip() for k in args.keywords.split(",") if k.strip()]
-        if args.keywords
+        _dedupe_casefold(k.strip() for k in args.keywords.split(","))
+        if args.keywords is not None
         else list(DEFAULT_KEYWORDS)
     )
-    target_domains = (
-        [args.domain]
-        if args.domain
-        else [d.strip() for d in args.domains.split(",") if d.strip()]
+    target_domains = list(
+        dict.fromkeys(
+            normalize_domain(d)
+            for d in ([args.domain] if args.domain else args.domains.split(","))
+            if normalize_domain(d)
+        )
     )
+    if not keywords:
+        parser.error("--keywords must name at least one keyword")
+    if not target_domains:
+        parser.error("--domain/--domains must name at least one valid domain")
+    if args.alert_improve is not None and args.alert_improve < 1:
+        parser.error("--alert-improve must be a positive number of positions")
     output_dir = Path(args.output_dir)
 
     if args.fixture or args.dry_run:

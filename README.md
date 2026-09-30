@@ -51,7 +51,10 @@ Fields on Bronze/API items:
 
 ```bash
 pip install -e .
-pip install -r <solo-empire>/infra/requirements-data-lake.txt
+# Lake writes need the shared data-lake runtime: the [lake] extra installs the
+# pinned solo-empire-data-lake (plus pyarrow/duckdb); inside Solo Empire the
+# parent checkout's infra/scripts/data_lake is used instead
+pip install -e ".[lake]"
 
 python -m book_seo.ingest --fixture
 python -m book_seo.ingest --keywords "python developer" --domain bookchaowalit.com \
@@ -100,6 +103,19 @@ explicit `LAKE_READ_FALLBACK=parquet` flag is selected.
 | GET | `/v1/records` | Bronze latest (not CSV) |
 | GET | `/v1/history` | Bronze history |
 | POST | `/v1/refresh` | 403 by default |
+
+## Data quality
+
+- A result counts for a target domain only when its host *is* that domain
+  or a subdomain (`ingest.domain_matches`); the old substring test matched
+  `notexample.com` and `example.com.evil.net` for `example.com`.
+- Ranks must be positive integers (`lake.valid_rank`); a row without a valid
+  rank is `found=false`, and a negative/non-integer `total_results` is blanked.
+- Target domains are normalised (`https://www.Example.com/` -> `example.com`)
+  and de-duplicated, so one check never lands two rows with the same id.
+- `--keywords`/`--domains` must be non-empty after trimming (keywords are
+  de-duplicated case-insensitively); `--alert-improve` must be >= 1 (exit 2).
+- CSV projections are written atomically (temp file + `os.replace`).
 
 ## Tests
 

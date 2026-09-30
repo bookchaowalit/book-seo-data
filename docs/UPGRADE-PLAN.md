@@ -1,6 +1,6 @@
 # Upgrade plan — book-seo-data
 
-Score: 7/10 -> 8/10 — lake tests now run standalone in CI via the pinned `[lake]` extra; remaining gaps are provider-parser fixtures and packaging polish.
+Score: 8/10 -> 8.5/10 — rankings now match target hosts exactly (no lookalike/substring hits), invalid ranks and duplicate domains never reach Bronze, projections are atomic and CLI input is validated; remaining gaps are packaging polish.
 
 ## Backlog
 
@@ -10,8 +10,26 @@ Score: 7/10 -> 8/10 — lake tests now run standalone in CI via the pinned `[lak
   the other book-*-data repos (same SHA everywhere).
 - P2: Add a `[project.optional-dependencies] dev` extra and a `[build-system]` table so
   `pip install -e ".[dev]"` is the single documented setup.
+- P1: Cover `fetch_public_page_search_raw` result extraction (`/url?q=` unwrapping, google/youtube
+  exclusion) with a saved HTML page, as book-ai-tools-data does for Futurepedia.
+- P2: `load_previous_rankings` keys by keyword only; key by keyword + target domain so
+  multi-domain runs compare like with like.
 
-## Done in this pass (pass 2)
+## Done in this pass (pass 3)
+
+- `check_ranking` matches by host/subdomain (`domain_matches`) instead of a substring of the
+  URL, which counted lookalike and spoofed hosts (and query strings) as rankings.
+- `lake.valid_rank` + `ranking_records_from_check`: non-numeric/NaN/zero/fractional ranks are
+  ignored instead of crashing `int()`, duplicate/blank target domains are collapsed, and
+  `found` requires a valid rank (new `quality` module).
+- CLI: domains normalised/de-duplicated, keywords de-duplicated, empty lists and
+  `--alert-improve < 1` rejected (exit 2).
+- New `fsutil` module: rankings CSV replaced atomically, history appended via atomic rewrite.
+- README Quick start uses `pip install -e ".[lake]"`; new "Data quality" section.
+- Verified: `pytest -q -rs` 36 passed, 0 skipped (was 27) with the `[lake]` venv; ruff
+  0.15.8 and 0.16.9 clean.
+
+## Done in pass 2
 
 - Added a `[lake]` extra pinning `solo-empire-data-lake` at `68fb5a9` (plus pyarrow/duckdb); CI
   installs `-e ".[lake]"`, asserts `data_lake` imports, and lake tests now run instead of skipping.
