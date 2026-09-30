@@ -323,7 +323,7 @@ class ApiContractTests(unittest.TestCase):
 
 class SmokeCompileTests(unittest.TestCase):
     def test_modules_import(self):
-        from book_seo import api, config as cfg, store
+        from book_seo import api, config as cfg, store  # noqa: F401 (import smoke)
 
         self.assertEqual(cfg.SCHEMA_VERSION, "seo.v1")
         self.assertEqual(int(cfg.API_PORT), 8106)
