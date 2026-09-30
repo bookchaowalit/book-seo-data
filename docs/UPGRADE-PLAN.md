@@ -34,6 +34,9 @@ Score: 8/10 -> 8.5/10 — rankings now match target hosts exactly (no lookalike/
 - CSV projection stamps (`_projection_timestamp`) are UTC; they were host-local
   but `product_store.parse_ts` reads naive stamps as UTC, so freshness was off
   by the host offset (`tests/test_projection_timestamp_utc.py`).
+- Public-page search skips Google/YouTube *hosts* via `domain_matches`; the
+  substring test also dropped results that only mention google.com in their
+  path or query (`tests/test_search_host_filter.py`).
 
 ## Done in pass 2
 

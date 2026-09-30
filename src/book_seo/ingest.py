@@ -198,7 +198,9 @@ def fetch_public_page_search_raw(
             href = a_tag["href"]
             m = re.search(r"/url\?q=(https?://[^&]+)", href)
             url = m.group(1) if m else href
-            if "google.com" in url or "youtube.com" in url:
+            # Skip Google/YouTube hosts only; a substring test also dropped
+            # results that merely mention them in their path or query.
+            if domain_matches(url, "google.com") or domain_matches(url, "youtube.com"):
                 continue
             title = a_tag.get_text(strip=True)
             if title and len(title) > 3:
