@@ -33,7 +33,7 @@ SAMPLE_RANKING = {
 
 
 def _shared_adapter_available() -> bool:
-    return lake.find_solo_empire_root() is not None
+    return lake.shared_runtime_available()
 
 
 class IdentityTests(unittest.TestCase):
@@ -80,7 +80,10 @@ class IdentityTests(unittest.TestCase):
 
 
 class OrderingTests(unittest.TestCase):
-    @unittest.skipUnless(_shared_adapter_available(), "shared data_lake adapter not found")
+    @unittest.skipUnless(
+        _shared_adapter_available(),
+        "shared data_lake runtime not installed (pip install -e .[lake])",
+    )
     def test_fail_closed_no_csv(self):
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp)
@@ -112,8 +115,8 @@ class OrderingTests(unittest.TestCase):
 
 
 @unittest.skipUnless(
-    lake.find_solo_empire_root() is not None,
-    "monorepo required",
+    lake.shared_runtime_available(),
+    "shared data_lake runtime not installed (pip install -e .[lake])",
 )
 class RealLakeTests(unittest.TestCase):
     def test_html_landing_and_replay(self):

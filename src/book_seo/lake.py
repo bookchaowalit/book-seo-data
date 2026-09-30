@@ -1,8 +1,10 @@
 """Lake-first adapter for book-seo-data (per provider/query landing)."""
 from __future__ import annotations
 
+import importlib.util
 import re
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -69,7 +71,11 @@ def _contract():
 
 
 def utc_now_iso() -> str:
-    return _pa_mod().utc_now_iso()
+    """UTC now as ``YYYY-MM-DDTHH:MM:SSZ`` (same format as the shared adapter).
+
+    Kept local so projections and identity helpers work without the lake runtime.
+    """
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def find_solo_empire_root(start: Optional[Path] = None) -> Optional[Path]:
@@ -82,6 +88,21 @@ def find_solo_empire_root(start: Optional[Path] = None) -> Optional[Path]:
         start or config.PROJECT_ROOT,
         solo_empire_root=config.SOLO_EMPIRE_ROOT,
     )
+
+
+def shared_runtime_available() -> bool:
+    """Return True when the shared ``data_lake`` runtime can be imported.
+
+    Covers the installed ``[lake]`` extra (``solo-empire-data-lake``) and the
+    ``SOLO_EMPIRE_ROOT`` / parent-checkout fallback used inside Solo Empire.
+    """
+    if importlib.util.find_spec("data_lake") is not None:
+        return True
+    try:
+        _pa_mod()
+    except ImportError:
+        return False
+    return True
 
 
 def default_data_lake_uri(solo_root: Optional[Path] = None) -> str:
