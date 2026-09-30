@@ -15,6 +15,18 @@ Score: 8/10 -> 8.5/10 — rankings now match target hosts exactly (no lookalike/
 - P2: `load_previous_rankings` keys by keyword only; key by keyword + target domain so
   multi-domain runs compare like with like.
 
+## Done in this pass (pass 4: edge cases)
+
+- `quality.finite_number` raised `OverflowError` for a JSON integer beyond
+  float range (`1` followed by 400 zeros); it now returns `None`.
+- `scripts/scrape_seo_rankings._clean_text` ran `html.unescape` on text that
+  BeautifulSoup had already decoded, so a page title showing a literal
+  `&lt;b&gt;` was stored as `<b>`; entities are now decoded once. A title made
+  only of U+200B/U+2060/BOM/soft hyphen now counts as blank (`data_status`
+  `error`) instead of a successful capture.
+- Verified: `tests/test_edge_cases.py` (all 3 fail on the old code); full
+  suite 43 passed; ruff 0.15.8 + 0.16.9.
+
 ## Done in this pass (pass 3)
 
 - `check_ranking` matches by host/subdomain (`domain_matches`) instead of a substring of the
@@ -67,15 +79,3 @@ Score: 8/10 -> 8.5/10 — rankings now match target hosts exactly (no lookalike/
   `SOLO_EMPIRE_ROOT=<parent>` + pyarrow/duckdb (all lake tests execute and pass).
 - Contract envelope and fail-closed tests skip cleanly without the adapter; the fail-closed
   test uses an explicit temporary lake URI.
-
-## Done in this pass (pass 4: edge cases)
-
-- `quality.finite_number` raised `OverflowError` for a JSON integer beyond
-  float range (`1` followed by 400 zeros); it now returns `None`.
-- `scripts/scrape_seo_rankings._clean_text` ran `html.unescape` on text that
-  BeautifulSoup had already decoded, so a page title showing a literal
-  `&lt;b&gt;` was stored as `<b>`; entities are now decoded once. A title made
-  only of U+200B/U+2060/BOM/soft hyphen now counts as blank (`data_status`
-  `error`) instead of a successful capture.
-- Verified: `tests/test_edge_cases.py` (all 3 fail on the old code); full
-  suite 43 passed; ruff 0.15.8 + 0.16.9.
