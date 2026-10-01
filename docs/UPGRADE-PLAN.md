@@ -4,16 +4,21 @@ Score: 8/10 -> 8.5/10 — rankings now match target hosts exactly (no lookalike/
 
 ## Backlog
 
-- P0: Confirm the first CI run on GitHub is green (it now downloads the pinned
-  `solo-empire-data-lake` tarball); keep it required on `main`.
+- P0: Confirm GitHub Actions `CI` is green on `claude/untitled-session-bhlj06` (it downloads the
+  pinned `solo-empire-data-lake` tarball). The branch is pushed, but runs so far ended within
+  ~5 s with no job logs (runner never started, not a test failure); check the account's
+  Actions/billing settings, then re-run and keep it required on `main`.
 - P1: When `solo-empire-data-lake` moves, bump the pinned commit in `[lake]` together with
   the other book-*-data repos (same SHA everywhere).
 - P2: Add a `[project.optional-dependencies] dev` extra and a `[build-system]` table so
   `pip install -e ".[dev]"` is the single documented setup.
-- P1: Cover `fetch_public_page_search_raw` result extraction (`/url?q=` unwrapping, google/youtube
-  exclusion) with a saved HTML page, as book-ai-tools-data does for Futurepedia.
 - P2: `load_previous_rankings` keys by keyword only; key by keyword + target domain so
   multi-domain runs compare like with like.
+
+## Docs sync (2026-10-01)
+
+- Closed backlog P1 "cover `fetch_public_page_search_raw` extraction": already covered by
+  `tests/test_search_host_filter.py` (`/url?q=` unwrapping, google/youtube exclusion, lookalike hosts).
 
 ## Done in this pass (pass 4: edge cases)
 
