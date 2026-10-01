@@ -11,7 +11,6 @@ Durable SEO lake/API ownership remains in ``book-seo-data``.
 from __future__ import annotations
 
 import csv
-import html as html_lib
 import json
 import re
 from datetime import datetime, timezone
@@ -114,8 +113,15 @@ def page_url(domain: str) -> str:
     return urlunsplit(("https", domain, "/", "", ""))
 
 
+# Zero-width space, word joiner, BOM and soft hyphen all render as
+# nothing, so a title made only of them must count as blank.
+_INVISIBLE = dict.fromkeys(map(ord, "\u200b\u2060\ufeff\u00ad"))
+
+
 def _clean_text(value: Any, limit: int) -> str:
-    text = html_lib.unescape(str(value or ""))
+    # BeautifulSoup's get_text() has already decoded entities; unescaping again
+    # turned a literal "&amp;lt;" in the page into "<".
+    text = str(value or "").translate(_INVISIBLE)
     return re.sub(r"\s+", " ", text).strip()[:limit]
 
 

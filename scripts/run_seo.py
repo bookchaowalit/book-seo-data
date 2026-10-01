@@ -13,7 +13,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from scrape_seo_rankings import SEORankingScraper
+from scrape_seo_rankings import SEORankingScraper  # noqa: E402
 
 JOBS = (("seo_rankings", SEORankingScraper),)
 

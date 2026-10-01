@@ -1,7 +1,6 @@
 """Lake-first tests for book-seo-data."""
 from __future__ import annotations
 
-import json
 import sys
 import tempfile
 import unittest
@@ -10,7 +9,7 @@ from unittest import mock
 
 from book_seo import config, lake
 from book_seo.ingest import run_live_ingest
-from book_seo.store import load_records, seed_lake_from_captures
+from book_seo.store import seed_lake_from_captures
 
 
 SAMPLE_RANKING = {
@@ -30,6 +29,11 @@ SAMPLE_RANKING = {
         }
     ],
 }
+
+
+
+def _shared_adapter_available() -> bool:
+    return lake.shared_runtime_available()
 
 
 class IdentityTests(unittest.TestCase):
@@ -76,6 +80,10 @@ class IdentityTests(unittest.TestCase):
 
 
 class OrderingTests(unittest.TestCase):
+    @unittest.skipUnless(
+        _shared_adapter_available(),
+        "shared data_lake runtime not installed (pip install -e .[lake])",
+    )
     def test_fail_closed_no_csv(self):
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp)
@@ -99,6 +107,7 @@ class OrderingTests(unittest.TestCase):
                             keywords=["python developer"],
                             target_domains=["bookchaowalit.com"],
                             output_dir=out,
+                            data_lake_uri=str(out / "lake"),
                             write_history=False,
                             project_csv=True,
                         )
@@ -106,8 +115,8 @@ class OrderingTests(unittest.TestCase):
 
 
 @unittest.skipUnless(
-    lake.find_solo_empire_root() is not None,
-    "monorepo required",
+    lake.shared_runtime_available(),
+    "shared data_lake runtime not installed (pip install -e .[lake])",
 )
 class RealLakeTests(unittest.TestCase):
     def test_html_landing_and_replay(self):

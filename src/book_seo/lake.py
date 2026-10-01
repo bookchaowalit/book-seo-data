@@ -1,18 +1,24 @@
 """Lake-first adapter for book-seo-data (per provider/query landing)."""
 from __future__ import annotations
 
-import hashlib
+import importlib.util
 import re
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
 from . import config
+from . import quality
 
 
 def _load_shared():
     cur = config.PROJECT_ROOT.resolve()
-    for parent in [cur, *cur.parents]:
+    candidates = [cur, *cur.parents]
+    if config.SOLO_EMPIRE_ROOT:
+        # Explicit parent checkout (e.g. sibling clone) wins over the walk.
+        candidates.insert(0, Path(config.SOLO_EMPIRE_ROOT).expanduser().resolve())
+    for parent in candidates:
         scripts = parent / "infra" / "scripts"
         if (scripts / "data_lake" / "product_adapter.py").is_file():
             if str(scripts) not in sys.path:
@@ -66,14 +72,38 @@ def _contract():
 
 
 def utc_now_iso() -> str:
-    return _pa_mod().utc_now_iso()
+    """UTC now as ``YYYY-MM-DDTHH:MM:SSZ`` (same format as the shared adapter).
+
+    Kept local so projections and identity helpers work without the lake runtime.
+    """
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def find_solo_empire_root(start: Optional[Path] = None) -> Optional[Path]:
-    return _pa_mod().find_solo_empire_root(
+    """Return the Solo Empire root, or ``None`` when the shared adapter is absent."""
+    try:
+        pa = _pa_mod()
+    except ImportError:
+        return None
+    return pa.find_solo_empire_root(
         start or config.PROJECT_ROOT,
         solo_empire_root=config.SOLO_EMPIRE_ROOT,
     )
+
+
+def shared_runtime_available() -> bool:
+    """Return True when the shared ``data_lake`` runtime can be imported.
+
+    Covers the installed ``[lake]`` extra (``solo-empire-data-lake``) and the
+    ``SOLO_EMPIRE_ROOT`` / parent-checkout fallback used inside Solo Empire.
+    """
+    if importlib.util.find_spec("data_lake") is not None:
+        return True
+    try:
+        _pa_mod()
+    except ImportError:
+        return False
+    return True
 
 
 def default_data_lake_uri(solo_root: Optional[Path] = None) -> str:
@@ -111,6 +141,17 @@ def stable_ranking_id(
     )
 
 
+def valid_rank(value: Any) -> Optional[int]:
+    """Return a SERP position as a positive int, or ``None``.
+
+    Rejects blanks, booleans, NaN/inf, fractions, zero and negatives.
+    """
+    number = quality.finite_number(value)
+    if number is None or number < 1 or number != int(number):
+        return None
+    return int(number)
+
+
 def normalize_ranking_record(
     ranking: dict[str, Any],
     *,
@@ -125,7 +166,7 @@ def normalize_ranking_record(
     domain = str(
         target_domain or ranking.get("target_domain") or ranking.get("best_domain") or ""
     ).strip().lower()
-    rank = ranking.get("rank", ranking.get("best_rank"))
+    rank = valid_rank(ranking.get("rank", ranking.get("best_rank")))
     result_url = str(
         ranking.get("result_url") or ranking.get("best_url") or ranking.get("url") or ""
     )
@@ -135,9 +176,8 @@ def normalize_ranking_record(
         or ranking.get("title")
         or ""
     )[:200]
-    found = ranking.get("found")
-    if found is None:
-        found = rank is not None and str(rank) != ""
+    # A row is only "found" when it carries a valid position.
+    found = rank is not None and ranking.get("found", True) is not False
     rid = stable_ranking_id(
         keyword=keyword,
         target_domain=domain or "none",
@@ -155,11 +195,16 @@ def normalize_ranking_record(
         "result_url": result_url,
         "result_title": result_title,
         "found": bool(found),
-        "total_results": ranking.get("total_results", ""),
+        "total_results": _count_or_blank(ranking.get("total_results", "")),
         "observed_at": observed,
         "event_time": observed,
         "content_type_hint": str(ranking.get("content_type_hint") or "text/html"),
     }
+
+
+def _count_or_blank(value: Any) -> Any:
+    number = quality.non_negative_number(value)
+    return int(number) if number is not None and number == int(number) else ""
 
 
 def ranking_records_from_check(
@@ -177,17 +222,21 @@ def ranking_records_from_check(
     positions = ranking.get("all_positions") or []
     by_domain: dict[str, dict[str, Any]] = {}
     for pos in positions:
-        d = str(pos.get("domain") or "").lower()
-        if not d:
+        if not isinstance(pos, dict):
+            continue
+        d = str(pos.get("domain") or "").strip().lower()
+        rank = valid_rank(pos.get("rank"))
+        if not d or rank is None:
             continue
         prev = by_domain.get(d)
-        rank = pos.get("rank")
-        if prev is None or (rank is not None and int(rank) < int(prev.get("rank") or 9999)):
+        if prev is None or rank < valid_rank(prev.get("rank")):
             by_domain[d] = pos
 
     records: list[dict[str, Any]] = []
-    for domain in target_domains:
-        d = domain.strip().lower()
+    # One row per distinct target domain: duplicates would repeat an id in the batch.
+    for d in dict.fromkeys(str(domain).strip().lower() for domain in target_domains):
+        if not d:
+            continue
         pos = by_domain.get(d)
         if pos:
             records.append(

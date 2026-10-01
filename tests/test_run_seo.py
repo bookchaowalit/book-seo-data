@@ -5,7 +5,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from run_seo import JOBS
+from run_seo import JOBS  # noqa: E402
 
 
 class RunSEOTests(unittest.TestCase):
