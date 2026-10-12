@@ -71,7 +71,7 @@ Score: 8/10 -> 8.5/10 — rankings now match target hosts exactly (no lookalike/
   the fixtures had drifted (missing `target_domain`, `location`, `device`, `provider`, `rank`, ...) and were refreshed.
 - `lake.utc_now_iso` is local (same format as the adapter), so projection works without the lake runtime.
 - Verified: fresh venv `pip install -e ".[lake]"` from the pinned tarball — 0 skipped of 27 with `[lake]` (was 12 of 26 skipped);
-  also against `pip install /home/user/solo-empire-data-lake`, with `SOLO_DATA_LAKE_ROOT=<solo-data-lake>`
+  also against `pip install /home/user/solo-empire-data-lake`, with `SOLO_DATA_LAKE_ROOT=<data-lake>`
   (parent adapter wins), and without the extra (lake tests skip with a reason). ruff 0.15 and 0.16 clean.
 
 ## Done in pass 1
@@ -85,6 +85,6 @@ Score: 8/10 -> 8.5/10 — rankings now match target hosts exactly (no lookalike/
 - Fixed the remaining default-rule ruff findings; `.gitignore` covers egg-info/ruff cache.
 - README "Tests" section documents the standalone and full-lake commands.
 - Verified: clean venv with `pip install -e . pytest` (CI shape) and a full run with
-  `SOLO_DATA_LAKE_ROOT=<solo-data-lake>` + pyarrow/duckdb (all lake tests execute and pass).
+  `SOLO_DATA_LAKE_ROOT=<data-lake>` + pyarrow/duckdb (all lake tests execute and pass).
 - Contract envelope and fail-closed tests skip cleanly without the adapter; the fail-closed
   test uses an explicit temporary lake URI.
