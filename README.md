@@ -1,10 +1,13 @@
 # book-seo-data
 
-SEO ranking intelligence — **lake-first**, public-page collection only by default.
+Owned-page reachability and provenance — **lake-first**, public-page collection
+only by default. The historical `seo_rankings` dataset name does not imply
+that a search-engine result position was collected.
 
-Migration status: shared `data_lake.product_adapter`. Each keyword/query response
-is landed separately (provider + query). HTML exact bytes go to landing; Bronze
-holds structured ranks + `raw_object_key`.
+Migration status: shared `data_lake.product_adapter`. Exact source bytes go to
+landing; Bronze retains observation fields and `raw_object_key`. See the
+[dataset contract](DATA-CONTRACT.md) for the distinction between scheduled
+owned-page observations and separately supplied search-result observations.
 
 Collection cron: `bash setup_cron.sh install` runs owned-domain homepage checks daily at 08:00 into `data/exported/`. This does not collect SERP ranks. Lake ingest remains a separate command.
 
@@ -20,7 +23,7 @@ Collection cron: `bash setup_cron.sh install` runs owned-domain homepage checks 
 | port | `8106` |
 
 ```text
-Public search/page response bytes
+Owned-page response / approved search response bytes
     → landing/source=book-seo-data/provider=<name>/…
     → bronze/domain=seo/dataset=seo_rankings|seo_rankings_history
     → manifest + lineage
@@ -34,7 +37,9 @@ Public search/page response bytes
 
 Fields on Bronze/API items:
 
-- `rank`, `result_url`, `result_title`, `observed_at`
+- `capture_kind`, `provider`, `result_url`, `result_title`, `observed_at`
+- `rank` stays blank for `owned_page_provenance`; it is meaningful only for
+  separately evidenced `serp_ranking` observations
 - `event_time` = observation time (`observed_at`)
 
 ### Provider policy
