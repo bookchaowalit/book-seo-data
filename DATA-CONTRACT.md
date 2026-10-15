@@ -10,8 +10,11 @@ are never evidence of a SERP position.
 `scripts/run_seo.py` invokes `scripts/scrape_seo_rankings.py` to check public
 homepages configured for the owner's domains. The default domains are
 `bookchaowalit.com` and `chaowalit.com`. This command checks HTTP response,
-page title and canonical URL, and writes the exact response bytes plus capture
-CSV projections. It does not query a search engine or collect search rank.
+page title and canonical URL. It writes structured page metadata and capture
+CSV projections, plus `seo_rankings_raw.json` containing requested keywords,
+page response byte counts and projected rows. Despite that filename, the JSON
+does not retain the response bodies. The scheduled path cannot replay or
+reconstruct the original HTML, and it does not collect a search rank.
 
 The snapshot fields are `captured_at`, `domain`, `url`, `http_status`, `title`,
 `canonical`, `content_length`, `data_status`, `rank`, `keyword`, and `source`.
@@ -20,7 +23,11 @@ Scheduled `rank` and `keyword` fields are blank and `source` is
 status, title, page status and source; neither file is a consumer API.
 
 The capture replay adapter in `data-lake-pipelines` maps these rows into the
-existing lake/API item shape:
+existing lake/API item shape. Landing can preserve the exact ingested capture
+file bytes; that is evidence of the projected observation, not retention of
+the original page response. Separate provider-response ingestion must be
+evidenced independently and is not promised by the scheduled capture:
+
 
 | Field | Meaning for an owned-page observation |
 | --- | --- |
@@ -32,9 +39,9 @@ existing lake/API item shape:
 | `found` | Page reachable with an accepted HTTP status and page status |
 | `rank`, `best_rank`, `total_results` | Blank; unknown is never rank zero or position one |
 | `page_http_status`, `page_data_status` | Capture response/status evidence |
-| `page_canonical_url`, `page_content_length` | Canonical link and captured page size |
+| `page_canonical_url`, `page_content_length` | Canonical link and decoded HTML character count |
 | `observed_at`, `event_time` | Capture observation time |
-| `raw_object_key` | Exact-byte landing provenance |
+| `raw_object_key` | Landing provenance for the ingested capture artifact (CSV/metadata), not original HTML |
 
 The stable record identity remains `keyword:target_domain:location:device`;
 history records add the existing observation suffix. Consumers must inspect

@@ -4,8 +4,10 @@ Owned-page reachability and provenance — **lake-first**, public-page collectio
 only by default. The historical `seo_rankings` dataset name does not imply
 that a search-engine result position was collected.
 
-Migration status: shared `data_lake.product_adapter`. Exact source bytes go to
-landing; Bronze retains observation fields and `raw_object_key`. See the
+Migration status: shared `data_lake.product_adapter`. The scheduled capture
+retains page metadata, response byte counts and CSV projections; it does not
+archive original HTML. Lake replay can land the exact capture-file bytes, and
+Bronze retains observation fields with `raw_object_key` for that artifact. See the
 [dataset contract](DATA-CONTRACT.md) for the distinction between scheduled
 owned-page observations and separately supplied search-result observations.
 
@@ -23,7 +25,7 @@ Collection cron: `bash setup_cron.sh install` runs owned-domain homepage checks 
 | port | `8106` |
 
 ```text
-Owned-page response / approved search response bytes
+Scheduled capture CSV/metadata / separately evidenced provider response
     → landing/source=book-seo-data/provider=<name>/…
     → bronze/domain=seo/dataset=seo_rankings|seo_rankings_history
     → manifest + lineage
