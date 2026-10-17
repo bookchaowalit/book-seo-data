@@ -1,4 +1,5 @@
 """Lake-first adapter for book-seo-data (per provider/query landing)."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -19,7 +20,11 @@ def _load_shared():
     Falls back to a data-lake checkout named by ``SOLO_DATA_LAKE_ROOT``.
     """
     if importlib.util.find_spec("data_lake") is None and config.SOLO_DATA_LAKE_ROOT:
-        scripts = Path(config.SOLO_DATA_LAKE_ROOT).expanduser().resolve() / "infra" / "scripts"
+        scripts = (
+            Path(config.SOLO_DATA_LAKE_ROOT).expanduser().resolve()
+            / "infra"
+            / "scripts"
+        )
         if not (scripts / "data_lake" / "product_adapter.py").is_file():
             raise ImportError(
                 f"SOLO_DATA_LAKE_ROOT={config.SOLO_DATA_LAKE_ROOT} has no "
@@ -85,7 +90,12 @@ def utc_now_iso() -> str:
 
     Kept local so projections and identity helpers work without the lake runtime.
     """
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return (
+        datetime.now(timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
 
 
 def shared_runtime_available() -> bool:
@@ -159,9 +169,16 @@ def normalize_ranking_record(
 ) -> dict[str, Any]:
     observed = observed_at or utc_now_iso()
     keyword = str(ranking.get("keyword") or "").strip()
-    domain = str(
-        target_domain or ranking.get("target_domain") or ranking.get("best_domain") or ""
-    ).strip().lower()
+    domain = (
+        str(
+            target_domain
+            or ranking.get("target_domain")
+            or ranking.get("best_domain")
+            or ""
+        )
+        .strip()
+        .lower()
+    )
     rank = valid_rank(ranking.get("rank", ranking.get("best_rank")))
     result_url = str(
         ranking.get("result_url") or ranking.get("best_url") or ranking.get("url") or ""

@@ -22,7 +22,9 @@ try:
     import httpx
     from bs4 import BeautifulSoup
 except ImportError as exc:  # pragma: no cover
-    raise RuntimeError("httpx and beautifulsoup4 are required for SEO page capture") from exc
+    raise RuntimeError(
+        "httpx and beautifulsoup4 are required for SEO page capture"
+    ) from exc
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -40,7 +42,9 @@ DEFAULT_KEYWORDS = [
 ]
 MAX_DOMAINS = 10
 MAX_KEYWORDS = 20
-DOMAIN_RE = re.compile(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$")
+DOMAIN_RE = re.compile(
+    r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$"
+)
 SNAPSHOT_FIELDS = [
     "captured_at",
     "domain",
@@ -66,7 +70,12 @@ HISTORY_FIELDS = [
 
 
 def _utc_now() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return (
+        datetime.now(timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
 
 
 def _as_values(values: Iterable[str] | str | None, default: list[str]) -> list[str]:
@@ -151,7 +160,9 @@ def fetch_page(domain: str) -> tuple[bytes, dict[str, Any]]:
     url = page_url(domain)
     try:
         transport = httpx.HTTPTransport(local_address="0.0.0.0")
-        with httpx.Client(transport=transport, follow_redirects=True, timeout=30) as client:
+        with httpx.Client(
+            transport=transport, follow_redirects=True, timeout=30
+        ) as client:
             response = client.get(
                 url,
                 headers={
@@ -176,23 +187,31 @@ def write_raw(payload: dict[str, Any], output_dir: Path) -> Path:
     return path
 
 
-def write_snapshot(rows: list[dict[str, Any]], captured_at: str, output_dir: Path) -> Path:
+def write_snapshot(
+    rows: list[dict[str, Any]], captured_at: str, output_dir: Path
+) -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
     path = output_dir / "seo_rankings.csv"
     with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=SNAPSHOT_FIELDS, extrasaction="ignore")
+        writer = csv.DictWriter(
+            handle, fieldnames=SNAPSHOT_FIELDS, extrasaction="ignore"
+        )
         writer.writeheader()
         for row in rows:
             writer.writerow({**row, "captured_at": captured_at})
     return path
 
 
-def append_history(rows: list[dict[str, Any]], captured_at: str, output_dir: Path) -> Path:
+def append_history(
+    rows: list[dict[str, Any]], captured_at: str, output_dir: Path
+) -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
     path = output_dir / "seo_rankings_history.csv"
     exists = path.exists()
     with path.open("a", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=HISTORY_FIELDS, extrasaction="ignore")
+        writer = csv.DictWriter(
+            handle, fieldnames=HISTORY_FIELDS, extrasaction="ignore"
+        )
         if not exists:
             writer.writeheader()
         for row in rows:
@@ -212,7 +231,11 @@ class SEORankingScraper:
         **_: Any,
     ) -> None:
         self.domains, self.keywords = normalize_request(domains, keywords)
-        if isinstance(alert_improve, bool) or not isinstance(alert_improve, int) or alert_improve < 0:
+        if (
+            isinstance(alert_improve, bool)
+            or not isinstance(alert_improve, int)
+            or alert_improve < 0
+        ):
             raise ValueError("alert_improve must be a non-negative integer")
         self.alert_improve = alert_improve
         self.output_dir = Path(output_dir) if output_dir else OUTPUT_DIR
@@ -227,7 +250,9 @@ class SEORankingScraper:
             rows.append(row)
         ok_rows = [row for row in rows if row["data_status"] == "ok"]
         if not ok_rows:
-            raise ValueError("SEO public-page capture returned no reachable owned domains")
+            raise ValueError(
+                "SEO public-page capture returned no reachable owned domains"
+            )
         raw_path = write_raw(
             {
                 "source": "public_page_check",
