@@ -1,4 +1,5 @@
 """Edge-case regressions: overflowing numbers and page-title text handling."""
+
 from __future__ import annotations
 
 import json
@@ -50,6 +51,7 @@ class EnvBoolTests(unittest.TestCase):
             self.assertIs(self._parse(raw, False), True)
         for raw in ("0", "False", " no", "OFF"):
             self.assertIs(self._parse(raw, True), False)
+
 
 if __name__ == "__main__":
     unittest.main()

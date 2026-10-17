@@ -1,4 +1,5 @@
 """Data-quality guards, domain matching and CLI validation for book-seo-data."""
+
 from __future__ import annotations
 
 import contextlib
@@ -64,14 +65,20 @@ class RankingRecordQualityTests(unittest.TestCase):
             target_domain="example.com",
             observed_at=OBSERVED,
         )
-        self.assertEqual((rec["rank"], rec["found"], rec["total_results"]), ("", False, ""))
+        self.assertEqual(
+            (rec["rank"], rec["found"], rec["total_results"]), ("", False, "")
+        )
 
     def test_duplicate_domains_and_bad_positions(self):
         ranking = {
             "keyword": "kw",
             "total_results": 20,
             "all_positions": [
-                {"domain": "example.com", "rank": "x", "url": "https://example.com/bad"},
+                {
+                    "domain": "example.com",
+                    "rank": "x",
+                    "url": "https://example.com/bad",
+                },
                 {"domain": "Example.com", "rank": 7, "url": "https://example.com/7"},
                 {"domain": "example.com", "rank": 4, "url": "https://example.com/4"},
                 "garbage",
@@ -83,15 +90,22 @@ class RankingRecordQualityTests(unittest.TestCase):
             target_domains=["example.com", "EXAMPLE.com ", "other.org", ""],
             observed_at=OBSERVED,
         )
-        self.assertEqual([r["target_domain"] for r in records], ["example.com", "other.org"])
+        self.assertEqual(
+            [r["target_domain"] for r in records], ["example.com", "other.org"]
+        )
         self.assertEqual(len({r["id"] for r in records}), 2)
-        self.assertEqual((records[0]["rank"], records[0]["result_url"]), (4, "https://example.com/4"))
+        self.assertEqual(
+            (records[0]["rank"], records[0]["result_url"]), (4, "https://example.com/4")
+        )
         self.assertEqual((records[1]["rank"], records[1]["found"]), ("", False))
 
 
 class CliValidationTests(unittest.TestCase):
     def _exit_code(self, argv: list[str]) -> int:
-        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as ctx:
+        with (
+            contextlib.redirect_stderr(io.StringIO()),
+            self.assertRaises(SystemExit) as ctx,
+        ):
             ingest.main(argv)
         return ctx.exception.code
 
@@ -103,25 +117,46 @@ class CliValidationTests(unittest.TestCase):
     def test_inputs_are_normalized(self):
         with mock.patch.object(ingest, "run_live_ingest") as run:
             code = ingest.main(
-                ["--keywords", "Python Tips, python tips,SEO", "--domains", "https://www.Example.com/,example.com,b.org"]
+                [
+                    "--keywords",
+                    "Python Tips, python tips,SEO",
+                    "--domains",
+                    "https://www.Example.com/,example.com,b.org",
+                ]
             )
         self.assertEqual(code, 0)
         self.assertEqual(run.call_args.kwargs["keywords"], ["Python Tips", "SEO"])
-        self.assertEqual(run.call_args.kwargs["target_domains"], ["example.com", "b.org"])
+        self.assertEqual(
+            run.call_args.kwargs["target_domains"], ["example.com", "b.org"]
+        )
 
 
 class AtomicProjectionTests(unittest.TestCase):
     def test_projections_leave_no_temp_files(self):
-        rows = [{"keyword": "kw", "target_domain": "example.com", "rank": 3, "found": True, "extra": 1}]
-        with tempfile.TemporaryDirectory() as tmp, contextlib.redirect_stdout(io.StringIO()):
+        rows = [
+            {
+                "keyword": "kw",
+                "target_domain": "example.com",
+                "rank": 3,
+                "found": True,
+                "extra": 1,
+            }
+        ]
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            contextlib.redirect_stdout(io.StringIO()),
+        ):
             out = Path(tmp)
             ingest.project_rankings_csv(rows, out)
             ingest.project_history_csv(rows, out)
             ingest.project_history_csv(rows, out)
             self.assertEqual(
-                sorted(p.name for p in out.iterdir()), ["seo_rankings.csv", "seo_rankings_history.csv"]
+                sorted(p.name for p in out.iterdir()),
+                ["seo_rankings.csv", "seo_rankings_history.csv"],
             )
-            with (out / "seo_rankings_history.csv").open(newline="", encoding="utf-8") as f:
+            with (out / "seo_rankings_history.csv").open(
+                newline="", encoding="utf-8"
+            ) as f:
                 self.assertEqual([r["rank"] for r in csv.DictReader(f)], ["3", "3"])
 
     def test_failed_write_keeps_previous_file(self):

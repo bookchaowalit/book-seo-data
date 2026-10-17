@@ -1,4 +1,5 @@
 """Lake-first tests for book-seo-data."""
+
 from __future__ import annotations
 
 import sys
@@ -29,7 +30,6 @@ SAMPLE_RANKING = {
         }
     ],
 }
-
 
 
 def _shared_adapter_available() -> bool:

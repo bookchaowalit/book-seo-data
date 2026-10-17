@@ -1,4 +1,5 @@
 """Free-only provider policy for book-seo-data."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -8,11 +9,23 @@ from . import config
 
 
 PROVIDERS: dict[str, dict[str, str]] = {
-    'public_page_check': {'status': 'free', 'reason': 'Direct public page checks without paid SERP APIs'},
-    'offline_fixtures': {'status': 'free', 'reason': 'Local fixture data'},
-    'firecrawl': {'status': 'blocked', 'reason': 'Firecrawl paid/optional path disabled'},
-    'google_cse': {'status': 'blocked', 'reason': 'Google Custom Search JSON API has billing path'},
-    'paid_serp': {'status': 'blocked', 'reason': 'Paid SERP APIs disabled by free-only policy'},
+    "public_page_check": {
+        "status": "free",
+        "reason": "Direct public page checks without paid SERP APIs",
+    },
+    "offline_fixtures": {"status": "free", "reason": "Local fixture data"},
+    "firecrawl": {
+        "status": "blocked",
+        "reason": "Firecrawl paid/optional path disabled",
+    },
+    "google_cse": {
+        "status": "blocked",
+        "reason": "Google Custom Search JSON API has billing path",
+    },
+    "paid_serp": {
+        "status": "blocked",
+        "reason": "Paid SERP APIs disabled by free-only policy",
+    },
 }
 
 

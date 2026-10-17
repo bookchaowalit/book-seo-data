@@ -148,7 +148,9 @@ def fetch_firecrawl_search_raw(
             json={"query": query, "limit": limit},
             timeout=30,
         )
-        raw = getattr(resp, "content", None) or resp.text.encode("utf-8", errors="replace")
+        raw = getattr(resp, "content", None) or resp.text.encode(
+            "utf-8", errors="replace"
+        )
         if resp.status_code != 200:
             return raw, "application/json", []
         data = resp.json()
@@ -183,15 +185,15 @@ def fetch_public_page_search_raw(
         google_url = (
             f"https://www.google.com/search?q={quote_plus(query)}&num={limit}&hl=en"
         )
-        resp = httpx.get(
-            google_url, headers=HEADERS, timeout=15, follow_redirects=True
-        )
+        resp = httpx.get(google_url, headers=HEADERS, timeout=15, follow_redirects=True)
         raw = getattr(resp, "content", None) or resp.text.encode(
             "utf-8", errors="replace"
         )
         if resp.status_code != 200:
             # Do not silently call paid fallbacks without policy.
-            print(f"  Public page HTTP {resp.status_code}; not falling back to paid SERP")
+            print(
+                f"  Public page HTTP {resp.status_code}; not falling back to paid SERP"
+            )
             return raw, "text/html", []
         soup = BeautifulSoup(resp.text, "html.parser")
         for a_tag in soup.find_all("a", href=True):
@@ -204,9 +206,7 @@ def fetch_public_page_search_raw(
                 continue
             title = a_tag.get_text(strip=True)
             if title and len(title) > 3:
-                results.append(
-                    {"url": url, "title": title[:200], "description": ""}
-                )
+                results.append({"url": url, "title": title[:200], "description": ""})
             if len(results) >= limit:
                 break
         return raw, "text/html", results
@@ -337,7 +337,9 @@ def project_rankings_csv(rows: list[dict], output_dir: Path) -> Path:
     ]
     scraped = _projection_timestamp()
     atomic_write_csv(
-        path, fieldnames, [{k: r.get(k, "") for k in fieldnames} | {"scraped_at": scraped} for r in rows]
+        path,
+        fieldnames,
+        [{k: r.get(k, "") for k in fieldnames} | {"scraped_at": scraped} for r in rows],
     )
     print(f"  Projected {len(rows)} rankings → {path}")
     return path
@@ -500,9 +502,7 @@ def run_live_ingest(
     location: Optional[str] = None,
     device: Optional[str] = None,
 ) -> dict[str, Any]:
-    location = location or (
-        _dp_config.DEFAULT_LOCATION if _dp_config else "global"
-    )
+    location = location or (_dp_config.DEFAULT_LOCATION if _dp_config else "global")
     device = device or (_dp_config.DEFAULT_DEVICE if _dp_config else "desktop")
 
     print(
@@ -538,9 +538,7 @@ def run_live_ingest(
             print(f"    No raw response for {keyword!r} (providers blocked/empty)")
             continue
 
-        ranking = check_ranking(
-            keyword, target_domains, results=results or []
-        )
+        ranking = check_ranking(keyword, target_domains, results=results or [])
         summary_rankings.append(ranking)
         records = _lake.ranking_records_from_check(
             ranking,
